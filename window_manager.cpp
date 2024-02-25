@@ -58,6 +58,8 @@ void WindowManager::Run() {
     XFree(top_level_windows);
     XUngrabServer(display_);
 
+    SetRootBackgroundColor(0x00FF00);
+
     while(true) {
         //Get the next Event
         XEvent e;
@@ -165,6 +167,7 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
 
     LOG(INFO) << "Framed window " << w << " [" << frame << "]";
 }
+
 void WindowManager::Unframe(Window w) {
     const Window frame = clients_[w];
     XUnmapWindow(display_, frame);
@@ -178,6 +181,20 @@ void WindowManager::Unframe(Window w) {
     clients_.erase(w);
     LOG(INFO) << "Unframed window " << w << " [" << frame << "]";
 }
+
+void WindowManager::SetRootBackgroundColor(unsigned long color) {
+    XWindowAttributes rootAttrs;
+    XGetWindowAttributes(display_, root_, &rootAttrs);
+
+    XGCValues gcValues;
+    GC gc = XCreateGC(display_, root_, 0, &gcValues);
+
+    XSetBackground(display_, gc, color);
+    XFillRectangle(display_, root_, gc, 0, 0, rootAttrs.width, rootAttrs.height);
+
+    XFreeGC(display_, gc);
+}
+
 
 void WindowManager::OnCreateNotify(const XCreateWindowEvent &e) {}
 void WindowManager::OnReparentNotify(const XReparentEvent &e) {}

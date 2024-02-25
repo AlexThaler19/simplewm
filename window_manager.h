@@ -20,6 +20,7 @@ private:
 
     void Frame(Window w, bool was_created_before_window_manager);
     void Unframe(Window w);
+    void SetRootBackgroundColor(unsigned long color);
 
     static int OnXError(Display *display, XErrorEvent *e);
     static int OnWMDetected(Display *display, XErrorEvent *e);

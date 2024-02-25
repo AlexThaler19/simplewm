@@ -117,7 +117,7 @@ int WindowManager::OnWMDetected(Display *display, XErrorEvent *e) {
 }
 
 int WindowManager::OnXError(Display *display, XErrorEvent *e) {
-    LOG(ERROR) << "Error: " << e;
+    LOG(ERROR) << "Error: " << static_cast<int>(e->error_code) << e->type;
     return 0;
 }
 

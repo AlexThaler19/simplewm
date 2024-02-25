@@ -239,4 +239,7 @@ template <typename T>
     return out.str();
 }
 
+
+Pixmap CreatePixmapFromPNG(Display* display, const char* filename, Window rootWindow);
+
 #endif

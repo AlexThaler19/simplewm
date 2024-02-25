@@ -1,7 +1,8 @@
 #include <glog/logging.h>
-#include <cstring>
 #include "window_manager.h"
 #include "util.h"
+#include <X11/Xutil.h>
+#include <iostream>
 
 using ::std::unique_ptr;
 
@@ -58,7 +59,11 @@ void WindowManager::Run() {
     XFree(top_level_windows);
     XUngrabServer(display_);
 
-    SetRootBackgroundColor(0x00FF00);
+    char *dir = get_current_dir_name();
+    std::cout << "Current directory: " << dir << std::endl;
+    SetBackgroundImage("./resources/LinusTorvalds.png");
+    //XSetWindowBackground(display_, root_, 0x435975);
+    XClearWindow(display_, root_);
 
     while(true) {
         //Get the next Event
@@ -137,6 +142,8 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
     const unsigned int BORDER_COLOR = 0x4287f5;
     const unsigned int BG_COLOR = 0x3b414a;
 
+    CHECK(!clients_.count(w));
+
     XWindowAttributes x_window_attrs;
     CHECK(XGetWindowAttributes(display_, w, &x_window_attrs));
 
@@ -158,12 +165,53 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
             BG_COLOR);
 
     XSelectInput(display_, frame, SubstructureRedirectMask | SubstructureNotifyMask);
-    XAddToSaveSet(display_, frame);
+    XAddToSaveSet(display_, w);
+    XReparentWindow(display_, w, frame, 0, 0);
+    XMapWindow(display_, frame);
     clients_[w] = frame;
-    //XGrabButton();    TODO
-    //XGrabButton();    TODO
-    //XGrabKey();       TODO
-    //XGrabKey();       TODO
+
+    //   a. Move windows with alt + left button.
+    XGrabButton(
+            display_,
+            Button1,
+            Mod1Mask,
+            w,
+            false,
+            ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
+            GrabModeAsync,
+            GrabModeAsync,
+            None,
+            None);
+    //   b. Resize windows with alt + right button.
+    XGrabButton(
+            display_,
+            Button3,
+            Mod1Mask,
+            w,
+            false,
+            ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
+            GrabModeAsync,
+            GrabModeAsync,
+            None,
+            None);
+    //   c. Kill windows with alt + f4.
+    XGrabKey(
+            display_,
+            XKeysymToKeycode(display_, XK_F4),
+            Mod1Mask,
+            w,
+            false,
+            GrabModeAsync,
+            GrabModeAsync);
+    //   d. Switch windows with alt + tab.
+    XGrabKey(
+            display_,
+            XKeysymToKeycode(display_, XK_Tab),
+            Mod1Mask,
+            w,
+            false,
+            GrabModeAsync,
+            GrabModeAsync);
 
     LOG(INFO) << "Framed window " << w << " [" << frame << "]";
 }
@@ -182,17 +230,21 @@ void WindowManager::Unframe(Window w) {
     LOG(INFO) << "Unframed window " << w << " [" << frame << "]";
 }
 
-void WindowManager::SetRootBackgroundColor(unsigned long color) {
-    XWindowAttributes rootAttrs;
-    XGetWindowAttributes(display_, root_, &rootAttrs);
+void WindowManager::SetBackgroundImage(const char *path) {
+    try {
+        // Load PNG image and create pixmap
+        Pixmap pixmap = CreatePixmapFromPNG(display_, path, root_);
 
-    XGCValues gcValues;
-    GC gc = XCreateGC(display_, root_, 0, &gcValues);
+        // Set the pixmap as the background of the root window
+        XSetWindowBackgroundPixmap(display_, root_, pixmap);
+        XClearWindow(display_, root_);
+        XFlush(display_);
 
-    XSetBackground(display_, gc, color);
-    XFillRectangle(display_, root_, gc, 0, 0, rootAttrs.width, rootAttrs.height);
-
-    XFreeGC(display_, gc);
+        // Free resources
+        XFreePixmap(display_, pixmap);
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error: " << e.what() << std::endl;
+    }
 }
 
 

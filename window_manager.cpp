@@ -117,7 +117,16 @@ int WindowManager::OnWMDetected(Display *display, XErrorEvent *e) {
 }
 
 int WindowManager::OnXError(Display *display, XErrorEvent *e) {
-    LOG(ERROR) << "Error: " << static_cast<int>(e->error_code) << e->type;
+    const int MAX_ERROR_TEXT_LENGTH = 1024;
+    char error_text[MAX_ERROR_TEXT_LENGTH];
+    XGetErrorText(display, e->error_code, error_text, sizeof(error_text));
+    LOG(ERROR) << "Received X error:\n"
+               << "    Request: " << int(e->request_code)
+               << " - " << XRequestCodeToString(e->request_code) << "\n"
+               << "    Error code: " << int(e->error_code)
+               << " - " << error_text << "\n"
+               << "    Resource ID: " << e->resourceid;
+    // The return value is ignored.
     return 0;
 }
 

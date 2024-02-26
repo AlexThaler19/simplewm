@@ -20,7 +20,6 @@
 #include <algorithm>
 #include <sstream>
 #include <vector>
-#include <png.h>
 //#include <glog/logging.h>
 
 using ::std::string;

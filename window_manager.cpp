@@ -12,13 +12,14 @@ unique_ptr<WindowManager> WindowManager::Create() {
     Display *display = XOpenDisplay(nullptr);
     if (display == nullptr) {
         //LOG(ERROR) << "Failed to open X display" << XDisplayName(nullptr);
+        ::std::cout << "Error opening X display";
         return nullptr;
     }
     return unique_ptr<WindowManager>(new WindowManager(display));
 }
 
 WindowManager::WindowManager(Display *display)
-    : display_(/*CHECK_NOTNULL(display)*/),
+    : display_(display),
       root_(DefaultRootWindow(display)) {
 }
 
@@ -229,23 +230,6 @@ void WindowManager::Unframe(Window w) {
     //LOG(INFO) << "Unframed window " << w << " [" << frame << "]";
 }
 
-/*void WindowManager::SetBackgroundImage(const char *path) {
-    try {
-        // Load PNG image and create pixmap
-        Pixmap pixmap = CreatePixmapFromPNG(display_, path, root_);
-
-        // Set the pixmap as the background of the root window
-        XSetWindowBackgroundPixmap(display_, root_, pixmap);
-        XClearWindow(display_, root_);
-        XFlush(display_);
-
-        // Free resources
-        XFreePixmap(display_, pixmap);
-    } catch (const std::exception& e) {
-        //LOG(ERROR) << "Error: " << e.what() << std::endl;
-    }
-}
-*/
 
 void WindowManager::OnCreateNotify(const XCreateWindowEvent &e) {}
 void WindowManager::OnReparentNotify(const XReparentEvent &e) {}

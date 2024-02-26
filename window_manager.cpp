@@ -61,8 +61,8 @@ void WindowManager::Run() {
 
     char *dir = get_current_dir_name();
     std::cout << "Current directory: " << dir << std::endl;
-    SetBackgroundImage("./resources/LinusTorvalds.png");
-    //XSetWindowBackground(display_, root_, 0x435975);
+    //SetBackgroundImage("./resources/LinusTorvalds.png");
+    XSetWindowBackground(display_, root_, 0x435975);
     XClearWindow(display_, root_);
 
     while(true) {
@@ -292,7 +292,10 @@ void WindowManager::OnUnmapNotify(const XUnmapEvent &e) {
     Unframe(e.window);
 }
 
-void WindowManager::OnButtonPress(const XButtonEvent &e) {}
+void WindowManager::OnButtonPress(const XButtonEvent &e) {
+    //CHECK(clients_.count(e.window));
+    //const Window frame = clients_(e.window)
+}
 void WindowManager::OnButtonRelease(const XButtonEvent &e) {}
 void WindowManager::OnMotionNotify(const XMotionEvent &e) {}
 void WindowManager::OnKeyPress(const XKeyEvent &e) {}

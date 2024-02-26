@@ -1,4 +1,4 @@
-#include <glog/logging.h>
+//#include <glog/logging.h>
 #include "window_manager.h"
 #include "util.h"
 #include <X11/Xutil.h>
@@ -11,14 +11,14 @@ bool WindowManager::wm_detected_;
 unique_ptr<WindowManager> WindowManager::Create() {
     Display *display = XOpenDisplay(nullptr);
     if (display == nullptr) {
-        LOG(ERROR) << "Failed to open X display" << XDisplayName(nullptr);
+        //LOG(ERROR) << "Failed to open X display" << XDisplayName(nullptr);
         return nullptr;
     }
     return unique_ptr<WindowManager>(new WindowManager(display));
 }
 
 WindowManager::WindowManager(Display *display)
-    : display_(CHECK_NOTNULL(display)),
+    : display_(/*CHECK_NOTNULL(display)*/),
       root_(DefaultRootWindow(display)) {
 }
 
@@ -35,7 +35,7 @@ void WindowManager::Run() {
             SubstructureRedirectMask | SubstructureNotifyMask);
     XSync(display_, false);
     if (wm_detected_) {
-        LOG(ERROR) << "Another window manager is already running" << XDisplayString(display_);
+        //LOG(ERROR) << "Another window manager is already running" << XDisplayString(display_);
         return;
     }
     XSetErrorHandler(&WindowManager::OnXError);
@@ -44,14 +44,14 @@ void WindowManager::Run() {
     Window returned_root, returned_parent;
     Window *top_level_windows;
     unsigned int num_top_level_windows;
-    CHECK(XQueryTree(
+    /*CHECK(*/XQueryTree(
             display_,
             root_,
             &returned_root,
             &returned_parent,
             &top_level_windows,
-            &num_top_level_windows));
-    CHECK_EQ(returned_root, root_);
+            &num_top_level_windows);//);
+    //CHECK_EQ(returned_root, root_);
     for (int i = 0; i < num_top_level_windows; ++i) {
         Frame(top_level_windows[i], true);
     }
@@ -59,8 +59,7 @@ void WindowManager::Run() {
     XFree(top_level_windows);
     XUngrabServer(display_);
 
-    char *dir = get_current_dir_name();
-    std::cout << "Current directory: " << dir << std::endl;
+
     //SetBackgroundImage("./resources/LinusTorvalds.png");
     XSetWindowBackground(display_, root_, 0x435975);
     XClearWindow(display_, root_);
@@ -69,7 +68,7 @@ void WindowManager::Run() {
         //Get the next Event
         XEvent e;
         XNextEvent(display_, &e);
-        LOG(INFO) << "Received event: " << ToString(e);
+        //LOG(INFO) << "Received event: " << ToString(e);
 
         switch(e.type) {
             case CreateNotify:
@@ -111,14 +110,14 @@ void WindowManager::Run() {
             case KeyRelease:
                 OnKeyRelease(e.xkey);
                 break;
-            default:
-                LOG(WARNING) << "Event not handled";
+            //default:
+                //LOG(WARNING) << "Event not handled";
         }
     }
 }
 
 int WindowManager::OnWMDetected(Display *display, XErrorEvent *e) {
-    CHECK_EQ(static_cast<int>(e->error_code), BadAccess);
+    //CHECK_EQ(static_cast<int>(e->error_code), BadAccess);
     wm_detected_ = true;
     return 0;
 }
@@ -127,12 +126,12 @@ int WindowManager::OnXError(Display *display, XErrorEvent *e) {
     const int MAX_ERROR_TEXT_LENGTH = 1024;
     char error_text[MAX_ERROR_TEXT_LENGTH];
     XGetErrorText(display, e->error_code, error_text, sizeof(error_text));
-    LOG(ERROR) << "Received X error:\n"
+    /*LOG(ERROR) << "Received X error:\n"
                << "    Request: " << int(e->request_code)
                << " - " << XRequestCodeToString(e->request_code) << "\n"
                << "    Error code: " << int(e->error_code)
                << " - " << error_text << "\n"
-               << "    Resource ID: " << e->resourceid;
+               << "    Resource ID: " << e->resourceid;*/
     // The return value is ignored.
     return 0;
 }
@@ -142,10 +141,10 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
     const unsigned int BORDER_COLOR = 0x4287f5;
     const unsigned int BG_COLOR = 0x3b414a;
 
-    CHECK(!clients_.count(w));
+    //CHECK(!clients_.count(w));
 
     XWindowAttributes x_window_attrs;
-    CHECK(XGetWindowAttributes(display_, w, &x_window_attrs));
+    //CHECK(XGetWindowAttributes(display_, w, &x_window_attrs));
 
     if (was_created_before_window_manager) {
         if(x_window_attrs.override_redirect || x_window_attrs.map_state != IsViewable) {
@@ -213,7 +212,7 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
             GrabModeAsync,
             GrabModeAsync);
 
-    LOG(INFO) << "Framed window " << w << " [" << frame << "]";
+    //LOG(INFO) << "Framed window " << w << " [" << frame << "]";
 }
 
 void WindowManager::Unframe(Window w) {
@@ -227,7 +226,7 @@ void WindowManager::Unframe(Window w) {
     XRemoveFromSaveSet(display_, w);
     XDestroyWindow(display_, w);
     clients_.erase(w);
-    LOG(INFO) << "Unframed window " << w << " [" << frame << "]";
+    //LOG(INFO) << "Unframed window " << w << " [" << frame << "]";
 }
 
 void WindowManager::SetBackgroundImage(const char *path) {
@@ -243,7 +242,7 @@ void WindowManager::SetBackgroundImage(const char *path) {
         // Free resources
         XFreePixmap(display_, pixmap);
     } catch (const std::exception& e) {
-        LOG(ERROR) << "Error: " << e.what() << std::endl;
+        //LOG(ERROR) << "Error: " << e.what() << std::endl;
     }
 }
 
@@ -266,11 +265,11 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent &e) {
     if (clients_.count(e.window)) {
         const Window frame =  clients_[e.window];
         XConfigureWindow(display_, frame, e.value_mask, &changes);
-        LOG(INFO) << "Resize [" << frame << "] to " << Size<int>(e.window, e.height);
+        //LOG(INFO) << "Resize [" << frame << "] to " << Size<int>(e.window, e.height);
     }
 
     XConfigureWindow(display_, e.window, e.value_mask, &changes);
-    LOG(INFO) << "Resize " << e.window << "to " << Size<int>(e.width, e.height);
+    //LOG(INFO) << "Resize " << e.window << "to " << Size<int>(e.width, e.height);
 }
 
 void WindowManager::OnMapRequest(const XMapRequestEvent &e) {
@@ -280,12 +279,12 @@ void WindowManager::OnMapRequest(const XMapRequestEvent &e) {
 
 void WindowManager::OnUnmapNotify(const XUnmapEvent &e) {
     if (!clients_.count(e.window)) {
-        LOG(INFO) << "UnmapNotify ignored for non-client window " << e.window;
+        //LOG(INFO) << "UnmapNotify ignored for non-client window " << e.window;
         return;
     }
 
     if (e.event == root_) {
-        LOG(INFO) << "UnmapNotify ignored for reparented pre-existing Window " << e.window;
+        //LOG(INFO) << "UnmapNotify ignored for reparented pre-existing Window " << e.window;
         return;
     }
 
@@ -294,7 +293,7 @@ void WindowManager::OnUnmapNotify(const XUnmapEvent &e) {
 
 void WindowManager::OnButtonPress(const XButtonEvent &e) {
     //CHECK(clients_.count(e.window));
-    //const Window frame = clients_(e.window)
+    const Window frame = clients_[e.window];
 }
 void WindowManager::OnButtonRelease(const XButtonEvent &e) {}
 void WindowManager::OnMotionNotify(const XMotionEvent &e) {}

@@ -229,7 +229,7 @@ void WindowManager::Unframe(Window w) {
     //LOG(INFO) << "Unframed window " << w << " [" << frame << "]";
 }
 
-void WindowManager::SetBackgroundImage(const char *path) {
+/*void WindowManager::SetBackgroundImage(const char *path) {
     try {
         // Load PNG image and create pixmap
         Pixmap pixmap = CreatePixmapFromPNG(display_, path, root_);
@@ -245,7 +245,7 @@ void WindowManager::SetBackgroundImage(const char *path) {
         //LOG(ERROR) << "Error: " << e.what() << std::endl;
     }
 }
-
+*/
 
 void WindowManager::OnCreateNotify(const XCreateWindowEvent &e) {}
 void WindowManager::OnReparentNotify(const XReparentEvent &e) {}

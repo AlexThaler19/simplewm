@@ -20,7 +20,7 @@
 #include <algorithm>
 #include <sstream>
 #include <vector>
-//#include <glog/logging.h>
+#include <glog/logging.h>
 
 using ::std::string;
 using ::std::vector;

@@ -38,6 +38,46 @@ WindowManager::~WindowManager() {
     XCloseDisplay(display_);
 }
 
+bool isTopBar(::std::vector<ClientWin> clients, Window eWin) {
+    for (auto & client : clients) {
+        if (client.topBar.win == eWin)
+            return true;
+    }
+    return false;
+}
+
+bool isCloseIcon(::std::vector<ClientWin> clients, Window eWin) {
+    for (auto & client : clients) {
+        if (client.topBar.closeIcon == eWin)
+            return true;
+    }
+    return false;
+}
+
+void WindowManager::closeWindow(Window win) {
+    XDestroyWindow(display_, win);
+    LOG(INFO) << "Destroyed Window " << win;
+    /*Atom* supportedProtocols;
+    int numSupportedProtocols;
+    if (XGetWMProtocols(display_, win, &supportedProtocols, &numSupportedProtocols) &&
+        ::std::find(supportedProtocols, supportedProtocols+numSupportedProtocols, WM_DELETE_WINDOW) !=
+        supportedProtocols + numSupportedProtocols) {
+        LOG(INFO) << "Gracefully deleting window " << win;
+
+        XEvent msg;
+        memset(&msg, 0, sizeof(msg));
+        msg.xclient.type = ClientMessage;
+        msg.xclient.message_type = WM_PROTOCOLS;
+        msg.xclient.window = win;
+        msg.xclient.format = 32;
+        msg.xclient.data.l[0] = WM_DELETE_WINDOW;
+        CHECK(XSendEvent(display_, win, false, 0, &msg));
+    } else {
+        LOG(INFO) << "Killing Window " << win;
+        XKillClient(display_, win);
+    }*/
+}
+
 void WindowManager::Run() {
     wm_detected_ = false;
     XSetErrorHandler(&WindowManager::OnWMDetected);
@@ -210,11 +250,12 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
             0,
             0xff0000);
     XSelectInput(display_, client.topBar.closeIcon, SubstructureRedirectMask | SubstructureNotifyMask);
-    XReparentWindow(display_, client.topBar.closeIcon, client.topBar.win, x_window_attrs.width-20, 0);
+    XReparentWindow(display_, client.topBar.closeIcon, client.frame, x_window_attrs.width-20, 0);
     XMapWindow(display_, client.topBar.closeIcon);
 
     clients_[client.topBar.win] = client.frame;
     clients_[w] = client.frame;
+    clients_[client.topBar.closeIcon] = client.frame;
     clientWindows.push_back(client);
     LOG(INFO) << "Close Button: " << client.topBar.closeIcon;
 
@@ -343,7 +384,13 @@ void WindowManager::OnButtonPress(const XButtonEvent &e) {
     else
         frame = e.window;
 
-
+    for(auto & clientWindow : clientWindows) {
+        if (isTopBar(clientWindows, e.window)) {
+            LOG(INFO) << "Clicked on TopBar";
+        } else if (isCloseIcon(clientWindows, e.window)) {
+            LOG(INFO) << "Clicked on CloseIcon -> Frame: " << frame;
+        }
+    }
     startPos = Position<int>(e.x_root, e.y_root);
 
     Window returned_root;
@@ -355,15 +402,8 @@ void WindowManager::OnButtonPress(const XButtonEvent &e) {
     XRaiseWindow(display_, frame);
 }
 void WindowManager::OnButtonRelease(const XButtonEvent &e) {
-
-}
-
-bool isTopBar(::std::vector<ClientWin> clients, Window eWin) {
-    for (auto i = clients.begin(); i != clients.end(); ++i) {
-        if (i->topBar.win == eWin)
-            return true;
-    }
-    return false;
+    if (isCloseIcon(clientWindows, e.window))
+        closeWindow(clients_[e.window]);
 }
 void WindowManager::OnMotionNotify(const XMotionEvent &e) {
     CHECK(clients_.count(e.window));
@@ -381,25 +421,7 @@ void WindowManager::OnMotionNotify(const XMotionEvent &e) {
 }
 void WindowManager::OnKeyPress(const XKeyEvent &e) {
     if ((e.state & Mod1Mask) && e.keycode == XKeysymToKeycode(display_, XK_F4)) {
-        Atom* supportedProtocols;
-        int numSupportedProtocols;
-        if (XGetWMProtocols(display_, e.window, &supportedProtocols, &numSupportedProtocols) &&
-            ::std::find(supportedProtocols, supportedProtocols+numSupportedProtocols, WM_DELETE_WINDOW) !=
-            supportedProtocols + numSupportedProtocols) {
-            LOG(INFO) << "Gracefully deleting window " << e.window;
-
-            XEvent msg;
-            memset(&msg, 0, sizeof(msg));
-            msg.xclient.type = ClientMessage;
-            msg.xclient.message_type = WM_PROTOCOLS;
-            msg.xclient.window = e.window;
-            msg.xclient.format = 32;
-            msg.xclient.data.l[0] = WM_DELETE_WINDOW;
-            CHECK(XSendEvent(display_, e.window, false, 0, &msg));
-        } else {
-            LOG(INFO) << "Killing Window " << e.window;
-            XKillClient(display_, e.window);
-        }
+        closeWindow(e.window);
     }
 }
 void WindowManager::OnKeyRelease(const XKeyEvent &e) {}

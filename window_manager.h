@@ -64,6 +64,8 @@ private:
 
     void OnKeyRelease(const XKeyEvent &e);
 
+    void closeWindow(Window win);
+
     ::std::unordered_map<Window, Window> clients_;
     ::std::vector<ClientWin> clientWindows;
     Position<int> startPos;

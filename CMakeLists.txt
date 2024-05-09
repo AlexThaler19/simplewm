@@ -7,4 +7,6 @@ add_executable(simplewm main.cpp
         window_manager.h
         window_manager.cpp
         util.cpp
-        util.h)
+        util.h
+        structs.h
+)

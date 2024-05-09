@@ -1,6 +1,7 @@
 #include "window_manager.h"
 extern "C" {
 #include <X11/Xutil.h>
+#include <X11/extensions/shape.h>
 }
 #include <cstring>
 #include <algorithm>
@@ -150,7 +151,7 @@ int WindowManager::OnXError(Display *display, XErrorEvent *e) {
 void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
     ClientWin client;
     const unsigned int BORDERWIDTH = 1;
-    const unsigned int BORDERCOLOR = 0x7a7a7a;
+    const unsigned int BORDERCOLOR = 0x7a7a7a;  //TODO Background image
     const unsigned int BGCOLOR = 0x3b414a;
 
     CHECK(!clients_.count(w));
@@ -172,14 +173,18 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
             x_window_attrs.y,
             x_window_attrs.width,
             x_window_attrs.height + 20,
-            BORDERWIDTH,
-            BORDERCOLOR,
-            BGCOLOR);
+            0,
+            0,
+            0);
+    //Pixmap pixmap = XCreatePixmap(display_, client.frame, 400, 300, 1);
+    //XShapeCombineMask(display_, client.frame, ShapeBounding, 0, 0, pixmap, ShapeSet);     //TODO transparent frame
+
     XSelectInput(display_, client.frame, SubstructureRedirectMask | SubstructureNotifyMask);
     XAddToSaveSet(display_, w);
     XReparentWindow(display_, w, client.frame, 0, 20);
     XMapWindow(display_, client.frame);
 
+    //Create Titlebar
     client.topBar.win = XCreateSimpleWindow(
             display_,
             client.frame,
@@ -194,10 +199,36 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
     XReparentWindow(display_, client.topBar.win, client.frame, 0, 0);
     XMapWindow(display_, client.topBar.win);
 
+    client.topBar.closeIcon = XCreateSimpleWindow(
+            display_,
+            client.topBar.win,
+            x_window_attrs.x,
+            x_window_attrs.y,
+            20,
+            20,
+            0,
+            0,
+            0xff0000);
+    XSelectInput(display_, client.topBar.closeIcon, SubstructureRedirectMask | SubstructureNotifyMask);
+    XReparentWindow(display_, client.topBar.closeIcon, client.topBar.win, x_window_attrs.width-20, 0);
+    XMapWindow(display_, client.topBar.closeIcon);
+
     clients_[client.topBar.win] = client.frame;
     clients_[w] = client.frame;
     clientWindows.push_back(client);
+    LOG(INFO) << "Close Button: " << client.topBar.closeIcon;
 
+    XGrabButton(
+            display_,
+            Button1,
+            AnyModifier,
+            client.topBar.closeIcon,
+            false,
+            ButtonPressMask | ButtonReleaseMask,
+            GrabModeAsync,
+            GrabModeAsync,
+            None,
+            None);
     //   a. Move windows with left button.
     XGrabButton(
             display_,
@@ -205,7 +236,7 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
             AnyModifier,
             client.topBar.win,
             false,
-            ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
+            ButtonPressMask | ButtonMotionMask,
             GrabModeAsync,
             GrabModeAsync,
             None,
@@ -227,7 +258,7 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
             display_,
             XKeysymToKeycode(display_, XK_F4),
             Mod1Mask,
-            w,
+            client.frame,
             false,
             GrabModeAsync,
             GrabModeAsync);
@@ -304,12 +335,15 @@ void WindowManager::OnUnmapNotify(const XUnmapEvent &e) {
 }
 
 void WindowManager::OnButtonPress(const XButtonEvent &e) {
+    LOG(INFO) << "Button press on " << e.window;
     CHECK(clients_.count(e.window));
     Window frame;
     if (clients_.count(e.window))
         frame = clients_[e.window];
     else
         frame = e.window;
+
+
     startPos = Position<int>(e.x_root, e.y_root);
 
     Window returned_root;
@@ -320,7 +354,9 @@ void WindowManager::OnButtonPress(const XButtonEvent &e) {
     startFrameSize = Position<int>(width, height);
     XRaiseWindow(display_, frame);
 }
-void WindowManager::OnButtonRelease(const XButtonEvent &e) {}
+void WindowManager::OnButtonRelease(const XButtonEvent &e) {
+
+}
 
 bool isTopBar(::std::vector<ClientWin> clients, Window eWin) {
     for (auto i = clients.begin(); i != clients.end(); ++i) {
@@ -331,7 +367,6 @@ bool isTopBar(::std::vector<ClientWin> clients, Window eWin) {
 }
 void WindowManager::OnMotionNotify(const XMotionEvent &e) {
     CHECK(clients_.count(e.window));
-    LOG(INFO) << "Event window: " << e.window << " " << isTopBar(clientWindows, e.window);
     if (!isTopBar(clientWindows, e.window))
         return;
     Window frame;
@@ -362,7 +397,7 @@ void WindowManager::OnKeyPress(const XKeyEvent &e) {
             msg.xclient.data.l[0] = WM_DELETE_WINDOW;
             CHECK(XSendEvent(display_, e.window, false, 0, &msg));
         } else {
-            LOG(INFO) << "Killing Window" << e.window;
+            LOG(INFO) << "Killing Window " << e.window;
             XKillClient(display_, e.window);
         }
     }

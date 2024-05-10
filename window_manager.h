@@ -66,6 +66,8 @@ private:
 
     void closeWindow(Window win);
 
+    void drawCross(ClientWin win);
+
     ::std::unordered_map<Window, Window> clients_;
     ::std::vector<ClientWin> clientWindows;
     Position<int> startPos;

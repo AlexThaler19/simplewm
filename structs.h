@@ -7,6 +7,8 @@ extern "C" {
 typedef struct {
     Window win;
     Window closeIcon;
+    Pixmap closePixmap;
+    GC closeGC;
     Window maximizeIcon;
     Window minimizeIcon;
 } MenuBar;

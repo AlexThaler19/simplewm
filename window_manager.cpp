@@ -2,6 +2,7 @@
 extern "C" {
 #include <X11/Xutil.h>
 #include <X11/extensions/shape.h>
+#include <X11/cursorfont.h>
 }
 #include <cstring>
 #include <algorithm>
@@ -54,6 +55,16 @@ bool isCloseIcon(::std::vector<ClientWin> clients, Window eWin) {
     return false;
 }
 
+ClientWin getWin(::std::vector<ClientWin> clients, Window frame) {
+    for (auto & win : clients) {
+        if (win.frame == frame) {
+            return win;
+        }
+    }
+    ClientWin ret;
+    return ret;
+}
+
 void WindowManager::closeWindow(Window win) {
     XDestroyWindow(display_, win);
     LOG(INFO) << "Destroyed Window " << win;
@@ -76,6 +87,16 @@ void WindowManager::closeWindow(Window win) {
         LOG(INFO) << "Killing Window " << win;
         XKillClient(display_, win);
     }*/
+}
+
+void WindowManager::drawCross(ClientWin win) {
+    XSetForeground(display_, win.topBar.closeGC, 0xFF0000);
+    XFillRectangle(display_, win.topBar.closePixmap, win.topBar.closeGC, 0, 0, 20, 20);
+    XSetForeground(display_, win.topBar.closeGC, 0x000000);
+    XSetLineAttributes(display_, win.topBar.closeGC, 2, 0, 0, 0);
+    XDrawLine(display_, win.topBar.closePixmap, win.topBar.closeGC, 3, 3, 17, 17);
+    XDrawLine(display_, win.topBar.closePixmap, win.topBar.closeGC, 3, 17, 17, 3);
+    XCopyArea(display_, win.topBar.closePixmap, win.topBar.closeIcon, win.topBar.closeGC, 0, 0, 20, 20, 0, 0);
 }
 
 void WindowManager::Run() {
@@ -115,6 +136,8 @@ void WindowManager::Run() {
     //SetBackgroundImage("./resources/LinusTorvalds.png");
     XSetWindowBackground(display_, root_, 0x435975);
     XClearWindow(display_, root_);
+    Cursor c = XCreateFontCursor(display_, XC_arrow);
+    XDefineCursor(display_, root_, c);
 
     while(true) {
         //Get the next Event
@@ -252,6 +275,12 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
     XSelectInput(display_, client.topBar.closeIcon, SubstructureRedirectMask | SubstructureNotifyMask);
     XReparentWindow(display_, client.topBar.closeIcon, client.frame, x_window_attrs.width-20, 0);
     XMapWindow(display_, client.topBar.closeIcon);
+
+    client.topBar.closePixmap = XCreatePixmap(display_, client.topBar.closeIcon,
+                                  20, 20,
+                                  DefaultDepth(display_, DefaultScreen(display_)));
+    client.topBar.closeGC = XCreateGC(display_, client.topBar.closePixmap, 0, None);
+    drawCross(client);
 
     clients_[client.topBar.win] = client.frame;
     clients_[w] = client.frame;
@@ -411,6 +440,8 @@ void WindowManager::OnMotionNotify(const XMotionEvent &e) {
         return;
     Window frame;
     frame = clients_[e.window];
+    ClientWin win = getWin(clientWindows, frame);
+
     const Position<int> currentPos(e.x_root, e.y_root);
     const Vector2D<int> delta = currentPos - startPos;
 
@@ -418,6 +449,10 @@ void WindowManager::OnMotionNotify(const XMotionEvent &e) {
         const Position<int> destPos = startFramePos + delta;
         XMoveWindow(display_, frame, destPos.x, destPos.y);
     }
+    for (auto & clientWin : clientWindows) {
+        drawCross(clientWin);
+    }
+
 }
 void WindowManager::OnKeyPress(const XKeyEvent &e) {
     if ((e.state & Mod1Mask) && e.keycode == XKeysymToKeycode(display_, XK_F4)) {

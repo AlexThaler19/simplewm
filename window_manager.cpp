@@ -66,9 +66,9 @@ ClientWin getWin(::std::vector<ClientWin> clients, Window frame) {
 }
 
 void WindowManager::closeWindow(Window win) {
-    XDestroyWindow(display_, win);
-    LOG(INFO) << "Destroyed Window " << win;
-    /*Atom* supportedProtocols;
+    /*XDestroyWindow(display_, win);
+    LOG(INFO) << "Destroyed Window " << win;*/
+    Atom* supportedProtocols;
     int numSupportedProtocols;
     if (XGetWMProtocols(display_, win, &supportedProtocols, &numSupportedProtocols) &&
         ::std::find(supportedProtocols, supportedProtocols+numSupportedProtocols, WM_DELETE_WINDOW) !=
@@ -85,14 +85,17 @@ void WindowManager::closeWindow(Window win) {
         CHECK(XSendEvent(display_, win, false, 0, &msg));
     } else {
         LOG(INFO) << "Killing Window " << win;
-        XKillClient(display_, win);
-    }*/
+        XDestroyWindow(display_, win);
+    }
 }
 
 void WindowManager::drawCross(ClientWin win) {
+    unsigned long color = 0x3b414a;
+    LOG(INFO) << "GC: " << win.topBar.closeGC;
+    LOG(INFO) << "Pixmap: " << win.topBar.closePixmap;
     XSetForeground(display_, win.topBar.closeGC, 0xFF0000);
     XFillRectangle(display_, win.topBar.closePixmap, win.topBar.closeGC, 0, 0, 20, 20);
-    XSetForeground(display_, win.topBar.closeGC, 0x000000);
+    XSetForeground(display_, win.topBar.closeGC, color);
     XSetLineAttributes(display_, win.topBar.closeGC, 2, 0, 0, 0);
     XDrawLine(display_, win.topBar.closePixmap, win.topBar.closeGC, 3, 3, 17, 17);
     XDrawLine(display_, win.topBar.closePixmap, win.topBar.closeGC, 3, 17, 17, 3);
@@ -151,6 +154,9 @@ void WindowManager::Run() {
                 break;
             case DestroyNotify:
                 OnDestroyNotify(e.xdestroywindow);
+                for (auto & clientWin : clientWindows) {
+                    drawCross(clientWin);
+                }
                 break;
             case ReparentNotify:
                 OnReparentNotify(e.xreparent);
@@ -178,6 +184,9 @@ void WindowManager::Run() {
                 break;
             case MotionNotify:
                 OnMotionNotify(e.xmotion);
+                for (auto & clientWin : clientWindows) {
+                    drawCross(clientWin);
+                }
                 break;
             case KeyPress:
                 OnKeyPress(e.xkey);
@@ -213,8 +222,8 @@ int WindowManager::OnXError(Display *display, XErrorEvent *e) {
 
 void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
     ClientWin client;
-    const unsigned int BORDERWIDTH = 1;
-    const unsigned int BORDERCOLOR = 0x7a7a7a;  //TODO Background image
+    const int BORDERWIDTH = 1;
+    const unsigned int BORDERCOLOR = 0xFF0000; //0x7a7a7a;  //TODO Background image
     const unsigned int BGCOLOR = 0x3b414a;
 
     CHECK(!clients_.count(w));
@@ -236,15 +245,15 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
             x_window_attrs.y,
             x_window_attrs.width,
             x_window_attrs.height + 20,
-            0,
-            0,
-            0);
+            BORDERWIDTH,
+            BORDERCOLOR,
+            BGCOLOR);
     //Pixmap pixmap = XCreatePixmap(display_, client.frame, 400, 300, 1);
     //XShapeCombineMask(display_, client.frame, ShapeBounding, 0, 0, pixmap, ShapeSet);     //TODO transparent frame
 
     XSelectInput(display_, client.frame, SubstructureRedirectMask | SubstructureNotifyMask);
     XAddToSaveSet(display_, w);
-    XReparentWindow(display_, w, client.frame, 0, 20);
+    XReparentWindow(display_, w, client.frame, -1, 20);
     XMapWindow(display_, client.frame);
 
     //Create Titlebar
@@ -286,7 +295,6 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
     clients_[w] = client.frame;
     clients_[client.topBar.closeIcon] = client.frame;
     clientWindows.push_back(client);
-    LOG(INFO) << "Close Button: " << client.topBar.closeIcon;
 
     XGrabButton(
             display_,
@@ -314,11 +322,11 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
     //   b. Resize windows with alt + right button.
     XGrabButton(
             display_,
-            Button3,
-            Mod1Mask,
+            Button1,
+            AnyModifier,
             w,
             false,
-            ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
+            ButtonPressMask,
             GrabModeAsync,
             GrabModeAsync,
             None,
@@ -449,10 +457,6 @@ void WindowManager::OnMotionNotify(const XMotionEvent &e) {
         const Position<int> destPos = startFramePos + delta;
         XMoveWindow(display_, frame, destPos.x, destPos.y);
     }
-    for (auto & clientWin : clientWindows) {
-        drawCross(clientWin);
-    }
-
 }
 void WindowManager::OnKeyPress(const XKeyEvent &e) {
     if ((e.state & Mod1Mask) && e.keycode == XKeysymToKeycode(display_, XK_F4)) {

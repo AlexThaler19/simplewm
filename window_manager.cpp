@@ -91,7 +91,7 @@ void WindowManager::closeWindow(Window win) {
 }
 
 void WindowManager::drawCross(ClientWin win) {
-    unsigned long color = 0x3b414a;
+    unsigned long color = 0x646375;
     LOG(INFO) << "GC: " << win.topBar.closeGC;
     XSetForeground(display_, win.topBar.closeGC, 0xFF0000);
     XSetBackground(display_, win.topBar.closeGC, color);
@@ -165,9 +165,6 @@ void WindowManager::Run() {
                 break;
             case DestroyNotify:
                 OnDestroyNotify(e.xdestroywindow);
-                for (auto & clientWin : clientWindows) {
-                    drawCross(clientWin);
-                }
                 break;
             case ReparentNotify:
                 OnReparentNotify(e.xreparent);
@@ -195,9 +192,6 @@ void WindowManager::Run() {
                 break;
             case MotionNotify:
                 OnMotionNotify(e.xmotion);
-                for (auto & clientWin : clientWindows) {
-                    drawCross(clientWin);
-                }
                 break;
             case KeyPress:
                 OnKeyPress(e.xkey);
@@ -208,6 +202,9 @@ void WindowManager::Run() {
             case Expose:
                 XClearWindow(display_, root_);
                 XSetWindowBackgroundPixmap(display_, root_, bg.pixmap);
+                for (auto & clientWin : clientWindows) {
+                    drawCross(clientWin);
+                }
                 break;
             default:
                 LOG(WARNING) << "Event not handled";

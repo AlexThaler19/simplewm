@@ -3,6 +3,7 @@ extern "C" {
 #include <X11/Xutil.h>
 #include <X11/extensions/shape.h>
 #include <X11/cursorfont.h>
+#include <X11/xpm.h>
 }
 #include <cstring>
 #include <algorithm>
@@ -92,23 +93,35 @@ void WindowManager::closeWindow(Window win) {
 void WindowManager::drawCross(ClientWin win) {
     unsigned long color = 0x3b414a;
     LOG(INFO) << "GC: " << win.topBar.closeGC;
-    LOG(INFO) << "Pixmap: " << win.topBar.closePixmap;
     XSetForeground(display_, win.topBar.closeGC, 0xFF0000);
-    XFillRectangle(display_, win.topBar.closePixmap, win.topBar.closeGC, 0, 0, 20, 20);
+    XSetBackground(display_, win.topBar.closeGC, color);
+    XSetWindowBackground(display_, win.topBar.closeIcon, color);
+    //XFillRectangle(display_, win.topBar.closePixmap, win.topBar.closeGC, 0, 0, 20, 20);
+    XFillArc(display_, win.topBar.closeIcon, win.topBar.closeGC, 0, 0, 20, 20, 0, 360*64);
     XSetForeground(display_, win.topBar.closeGC, color);
-    XSetLineAttributes(display_, win.topBar.closeGC, 2, 0, 0, 0);
-    XDrawLine(display_, win.topBar.closePixmap, win.topBar.closeGC, 3, 3, 17, 17);
-    XDrawLine(display_, win.topBar.closePixmap, win.topBar.closeGC, 3, 17, 17, 3);
-    XCopyArea(display_, win.topBar.closePixmap, win.topBar.closeIcon, win.topBar.closeGC, 0, 0, 20, 20, 0, 0);
+    XSetLineAttributes(display_, win.topBar.closeGC, 5, 0, CapRound, JoinRound);
+    XDrawLine(display_, win.topBar.closeIcon, win.topBar.closeGC, 6, 6, 14, 14);
+    XDrawLine(display_, win.topBar.closeIcon, win.topBar.closeGC, 6, 14, 14, 6);
+}
+
+void WindowManager::setBackground(const char *path) {
+    LOG(INFO) << "Creating XPM Pixmap";
+    bg.path = path;
+    XpmReadFileToPixmap(display_, root_, bg.path, &bg.pixmap, nullptr, nullptr);
 }
 
 void WindowManager::Run() {
     wm_detected_ = false;
     XSetErrorHandler(&WindowManager::OnWMDetected);
+
+    setBackground("./resources/LinusTorvalds.xpm");
+    XClearWindow(display_, root_);
+    XSetWindowBackgroundPixmap(display_, root_, bg.pixmap);
+
     XSelectInput(
             display_,
             root_,
-            SubstructureRedirectMask | SubstructureNotifyMask);
+            SubstructureRedirectMask | SubstructureNotifyMask | ExposureMask);
     XSync(display_, false);
     if (wm_detected_) {
         LOG(ERROR) << "Another window manager is already running" << XDisplayString(display_);
@@ -135,12 +148,10 @@ void WindowManager::Run() {
     XFree(top_level_windows);
     XUngrabServer(display_);
 
-
-    //SetBackgroundImage("./resources/LinusTorvalds.png");
-    XSetWindowBackground(display_, root_, 0x435975);
-    XClearWindow(display_, root_);
     Cursor c = XCreateFontCursor(display_, XC_arrow);
     XDefineCursor(display_, root_, c);
+
+
 
     while(true) {
         //Get the next Event
@@ -194,6 +205,10 @@ void WindowManager::Run() {
             case KeyRelease:
                 OnKeyRelease(e.xkey);
                 break;
+            case Expose:
+                XClearWindow(display_, root_);
+                XSetWindowBackgroundPixmap(display_, root_, bg.pixmap);
+                break;
             default:
                 LOG(WARNING) << "Event not handled";
         }
@@ -223,7 +238,7 @@ int WindowManager::OnXError(Display *display, XErrorEvent *e) {
 void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
     ClientWin client;
     const int BORDERWIDTH = 1;
-    const unsigned int BORDERCOLOR = 0xFF0000; //0x7a7a7a;  //TODO Background image
+    const unsigned int BORDERCOLOR = 0x7a7a7a;  //TODO Background image
     const unsigned int BGCOLOR = 0x3b414a;
 
     CHECK(!clients_.count(w));
@@ -280,15 +295,12 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
             20,
             0,
             0,
-            0xff0000);
+            0x646375);
     XSelectInput(display_, client.topBar.closeIcon, SubstructureRedirectMask | SubstructureNotifyMask);
     XReparentWindow(display_, client.topBar.closeIcon, client.frame, x_window_attrs.width-20, 0);
     XMapWindow(display_, client.topBar.closeIcon);
 
-    client.topBar.closePixmap = XCreatePixmap(display_, client.topBar.closeIcon,
-                                  20, 20,
-                                  DefaultDepth(display_, DefaultScreen(display_)));
-    client.topBar.closeGC = XCreateGC(display_, client.topBar.closePixmap, 0, None);
+    client.topBar.closeGC = XCreateGC(display_, client.topBar.closeIcon, 0, None);
     drawCross(client);
 
     clients_[client.topBar.win] = client.frame;

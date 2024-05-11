@@ -7,7 +7,6 @@ extern "C" {
 typedef struct {
     Window win;
     Window closeIcon;
-    Pixmap closePixmap;
     GC closeGC;
     Window maximizeIcon;
     Window minimizeIcon;
@@ -18,5 +17,10 @@ typedef struct {
     Window frame;
     Window w;
 } ClientWin;
+
+typedef struct {
+    const char *path;
+    Pixmap pixmap;
+} BackgroundImage;
 
 #endif

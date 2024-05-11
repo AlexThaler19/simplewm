@@ -68,6 +68,10 @@ private:
 
     void drawCross(ClientWin win);
 
+    void setBackground(const char *path);
+
+    BackgroundImage bg;
+
     ::std::unordered_map<Window, Window> clients_;
     ::std::vector<ClientWin> clientWindows;
     Position<int> startPos;

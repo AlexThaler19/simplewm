@@ -1,0 +1,6 @@
+libgoogle-glog-dev
+libx11-dev
+libxext-dev
+libxpm-dev
+xterm
+x11-apps

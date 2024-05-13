@@ -1,3 +1,0 @@
-/home/alex/CLionProjects/simplewm/cmake-build-debug/CMakeFiles/simplewm.dir
-/home/alex/CLionProjects/simplewm/cmake-build-debug/CMakeFiles/edit_cache.dir
-/home/alex/CLionProjects/simplewm/cmake-build-debug/CMakeFiles/rebuild_cache.dir

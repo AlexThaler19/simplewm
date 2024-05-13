@@ -4,3 +4,4 @@ libxext-dev
 libxpm-dev
 xterm
 x11-apps
+xinit

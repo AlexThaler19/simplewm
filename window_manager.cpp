@@ -96,7 +96,6 @@ void WindowManager::drawCross(ClientWin win) {
     XSetForeground(display_, win.topBar.closeGC, 0xFF0000);
     XSetBackground(display_, win.topBar.closeGC, color);
     XSetWindowBackground(display_, win.topBar.closeIcon, color);
-    //XFillRectangle(display_, win.topBar.closePixmap, win.topBar.closeGC, 0, 0, 20, 20);
     XFillArc(display_, win.topBar.closeIcon, win.topBar.closeGC, 0, 0, 20, 20, 0, 360*64);
     XSetForeground(display_, win.topBar.closeGC, color);
     XSetLineAttributes(display_, win.topBar.closeGC, 5, 0, CapRound, JoinRound);
@@ -107,6 +106,9 @@ void WindowManager::drawCross(ClientWin win) {
 void WindowManager::setBackground(const char *path) {
     LOG(INFO) << "Creating XPM Pixmap";
     bg.path = path;
+    Pixmap tmp;
+    XWindowAttributes attrs;
+    XGetWindowAttributes(display_, root_, &attrs);
     XpmReadFileToPixmap(display_, root_, bg.path, &bg.pixmap, nullptr, nullptr);
 }
 
@@ -235,7 +237,7 @@ int WindowManager::OnXError(Display *display, XErrorEvent *e) {
 void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
     ClientWin client;
     const int BORDERWIDTH = 1;
-    const unsigned int BORDERCOLOR = 0x7a7a7a;  //TODO Background image
+    const unsigned int BORDERCOLOR = 0x7a7a7a;
     const unsigned int BGCOLOR = 0x3b414a;
 
     CHECK(!clients_.count(w));
@@ -250,22 +252,24 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
             return;
         }
     }
+
     client.frame = XCreateSimpleWindow(
             display_,
             root_,
             x_window_attrs.x,
             x_window_attrs.y,
             x_window_attrs.width,
-            x_window_attrs.height + 20,
+            x_window_attrs.height + 26,
             BORDERWIDTH,
             BORDERCOLOR,
             BGCOLOR);
+    XSetWindowBorderWidth(display_, w, 0);
     //Pixmap pixmap = XCreatePixmap(display_, client.frame, 400, 300, 1);
     //XShapeCombineMask(display_, client.frame, ShapeBounding, 0, 0, pixmap, ShapeSet);     //TODO transparent frame
 
     XSelectInput(display_, client.frame, SubstructureRedirectMask | SubstructureNotifyMask);
     XAddToSaveSet(display_, w);
-    XReparentWindow(display_, w, client.frame, -1, 20);
+    XReparentWindow(display_, w, client.frame, 0, 26);
     XMapWindow(display_, client.frame);
 
     //Create Titlebar
@@ -275,7 +279,7 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
             x_window_attrs.x,
             x_window_attrs.y,
             x_window_attrs.width,
-            20,
+            26,
             0,
             0,
             0x646375);
@@ -294,7 +298,7 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
             0,
             0x646375);
     XSelectInput(display_, client.topBar.closeIcon, SubstructureRedirectMask | SubstructureNotifyMask);
-    XReparentWindow(display_, client.topBar.closeIcon, client.frame, x_window_attrs.width-20, 0);
+    XReparentWindow(display_, client.topBar.closeIcon, client.frame, x_window_attrs.width-23, 3);
     XMapWindow(display_, client.topBar.closeIcon);
 
     client.topBar.closeGC = XCreateGC(display_, client.topBar.closeIcon, 0, None);
